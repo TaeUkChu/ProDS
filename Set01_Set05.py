@@ -28,7 +28,11 @@ Created on 2021
 # =============================================================================
 # =============================================================================
 
+import numpy as np
+import pandas as pd
 
+data1 = pd.read_csv("./Dataset/Dataset_01.csv")
+data1.info(null_counts=True)
 
 
 #%%
@@ -36,12 +40,12 @@ Created on 2021
 # =============================================================================
 # 1. 데이터 세트 내에 총 결측값의 개수는 몇 개인가? (답안 예시) 23
 # =============================================================================
-
-
-
-
+sum(data1.isna().sum())
+#TV 기준 na가 있는 열??
+#data1[data1['TV'].isna()] <- 구 버전은 이걸로 안됨. 슬라이스 기능이 제한적. 
+data1.loc[data1['TV'].isna()] 
+#data1.loc[data1['TV'].isna().values]
 #%%
-
 # =============================================================================
 # 2. TV, Radio, Social Media 등 세 가지 다른 마케팅 채널의 예산과 매출액과의 상관분석을
 # 통하여 각 채널이 매출에 어느 정도 연관이 있는지 알아보고자 한다. 
@@ -49,12 +53,19 @@ Created on 2021
 # 자리에서 반올림하여 소수점 넷째 자리까지 기술하시오. (답안 예시) 0.1234
 # =============================================================================
 
+num_col = data1.columns[data1.dtypes != 'Object']
+#np.max(data1[num_col].corr()['Sales'].iloc[:-1]).round(4)
+q = data1.corr().loc[:,'Sales'].drop('Sales',axis=0).round(4)
+q.nlargest(1)
+# import seaborn as sns
+# sns.heatmap(data1.corr(),annot=True)
 
 
-
-
-
-
+a1 = data1.groupby('Influencer')
+dir(a1)
+a1.groups
+a1.get_group('Macro')
+# data1.groupby('Influencer').apply(lambda x : x.corr()['Sales'].drop('Sales').abs().idxmax())
 #%%
 
 # =============================================================================
@@ -64,15 +75,44 @@ Created on 2021
 # - 분석 시 결측치가 포함된 행은 제거한 후 진행하며, 회귀계수는 소수점 넷째 자리
 # 이하는 버리고 소수점 셋째 자리까지 기술하시오. (답안 예시) 0.123
 # =============================================================================
+from sklearn.linear_model import LinearRegression
+#결측치, 변수 순서 일치, 범주형 사용 불가능, 상수와 회귀 계수 리턴
+from statsmodels.formula.api import ols
+#결측치 제거, 순서 관계없음 (데이터프레임 방식 채택,이름 조회)
+#범주형 변수 사용 (자동 더미 변환), 가설검정에서 사용되는 모든 통계량 리턴
 
+q3= data1.dropna()
 
+var_list = ['TV','Radio','Social_Media']
+lm1 = LinearRegression(fit_intercept=True) #ax+b에서 상수 b도 포함하겠다.
 
+lm1.fit(q3[var_list],q3['Sales'])
+#lm1.fit(q3['TV'].values.reshape(-1,1),q3['Sales'])
 
+q2_ans = pd.Series(lm1.coef_,index=var_list).sort_values(ascending=False)
+np.trunc(q2_ans*1000) / 1000 #np.trunc : 정수로 바꿔줌.
 
+'''
+TV              3.562
+Social_Media    0.004
+Radio          -0.003
+dtype: float64
+'''
 
+# 참고
+# dir(lm1)
+# q3['TV'].values.reshape(-1,1)
+# #q3['TV'].ndim
+# #q3['TV'].shape
+# q3[['TV']].ndim
+#q3[['TV']].shape
+#%%
+from statsmodels.formula.api import ols
+lm2 = ols('Sales~TV+Radio+Social_Media',data1) #선언식
+lm3 = lm2.fit() #분리해서 사용 
 
-
-
+dir(lm3)
+lm4 = ols('Sales~TV+Radio+Social_Media',data1).fit() #선언식 사라짐.
 
 #%%
 
